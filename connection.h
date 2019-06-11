@@ -197,22 +197,22 @@ namespace gymon
 		std::ostringstream oss;
 		char buffer[ 256 ]{ 0 };
 
-		if( FILE* file{ fopen( R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/GymeaOutput.txt)", "r" ) }; file )
-		{
-			while( fgets( buffer, sizeof( buffer ), file ) != nullptr )
-			{
-				oss << buffer;
-				bzero( buffer, sizeof( buffer ) );
-			}
-			fclose( file );
-		}
-		
-		
-		//while( fgets( buffer, sizeof( buffer ), pfile.get( ) ) != nullptr )
+		//if( FILE* file{ fopen( R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/GymeaOutput.txt)", "r" ) }; file )
 		//{
-		//	oss << buffer;
-		//	bzero( buffer, sizeof( buffer ) );
+		//	while( fgets( buffer, sizeof( buffer ), file ) != nullptr )
+		//	{
+		//		oss << buffer;
+		//		bzero( buffer, sizeof( buffer ) );
+		//	}
+		//	fclose( file );
 		//}
+				
+		while( fgets( buffer, sizeof( buffer ), pfile.get( ) ) != nullptr )
+		{
+			oss << buffer;
+			bzero( buffer, sizeof( buffer ) );
+		}
+
 		if( pfile && ferror( pfile.get( ) ) )
 		{
 			perror( "Failed to execute shell command" );

@@ -12,7 +12,7 @@ OPT = -O3
 # Set linker flags.
 LDFLAGS = -g 
 # Set application name.
-NAME = gymon
+NAME = gymon.out
 
 all: main.o resparse.o
 	$(CXX) $(LDFLAGS) $(OPT) main.o resparse.o $(FMT_LIB) -o $(NAME)
