@@ -1,0 +1,4 @@
+Stopping Gymea instance 0: [60G[[0;31mFAILED[0;39m][60G[[0;31mFAILED[0;39m]
+Stopping Gymea instance 1: [60G[[0;31mFAILED[0;39m][60G[[0;31mFAILED[0;39m]
+Stopping Gymea instance 2: [60G[[0;32m  OK  [0;39m][60G[[0;31mFAILED[0;39m]
+Stopping Gymea instance 3: [60G[[0;31mFAILED[0;39m][60G[[0;31mFAILED[0;39m]

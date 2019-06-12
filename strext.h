@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <vector>
 #include <iostream>
+#include <regex>
 
 namespace gymon
 {
@@ -22,8 +23,30 @@ namespace gymon
 			return std::equal( std::rbegin( suffix ), std::rend( suffix ), std::rbegin( str ) );
 		}
 
-		static std::vector<std::string> split( std::string_view str, std::string_view delim )
+		static std::vector<std::string> split( std::string const& str, std::string_view pattern )
 		{
+			std::vector<std::string> tokens;
+			std::regex rgx{ pattern.data( ), 
+				std::regex_constants::ECMAScript | 
+				std::regex_constants::icase	};
+			
+			std::sregex_token_iterator it{ std::begin( str ), std::end( str ), rgx, -1 };
+			std::sregex_token_iterator end;
+
+			if( it == end )	
+			{
+				tokens.push_back( str );
+				return tokens;				
+			}
+			
+			while( it != end )
+			{				
+				tokens.push_back( it->str( ) );
+				++it;
+			}
+			
+			return tokens;
+			/*
 			std::vector<std::string> tokens;
 			size_t prev = 0, pos = 0;
 			do
@@ -37,6 +60,7 @@ namespace gymon
 				prev = pos + delim.length( );
 			} while( pos < str.length( ) && prev < str.length( ) );
 			return tokens;
+			*/
 		}
 	};
 }

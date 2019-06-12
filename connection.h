@@ -115,7 +115,7 @@ namespace gymon
 						else
 						{							
 							if( send( fmt::format( 
-								"ERROR: Unable to execute '{0}' command", req ) ) == sockresult::error )
+								"ERROR: Unable to execute '{0}' command\n", req ) ) == sockresult::error )
 							{
 								perror( "Failed to write to socket." );
 								close( _socket );
@@ -128,7 +128,7 @@ namespace gymon
 					else
 					{						
 						if( send( fmt::format( 
-							"ERROR: The request '{0}' is invalid", req ) ) == sockresult::error )
+							"ERROR: The request '{0}' is invalid\n", req ) ) == sockresult::error )
 						{
 							perror( "Failed to write to socket." );
 							close( _socket );
@@ -197,16 +197,30 @@ namespace gymon
 		std::ostringstream oss;
 		char buffer[ 256 ]{ 0 };
 
-		//if( FILE* file{ fopen( R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/GymeaOutput.txt)", "r" ) }; file )
-		//{
-		//	while( fgets( buffer, sizeof( buffer ), file ) != nullptr )
-		//	{
-		//		oss << buffer;
-		//		bzero( buffer, sizeof( buffer ) );
-		//	}
-		//	fclose( file );
-		//}
-				
+		/*
+		std::string path;
+		if( cmd.gettype( ) == cmdtype::start )
+			path = R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/responses/start.txt)";
+		else if( cmd.gettype( ) == cmdtype::stop )
+			path = R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/responses/stop.txt)";
+		else if( cmd.gettype( ) == cmdtype::restart )
+			path = R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/responses/restart.txt)";
+		else if( cmd.gettype( ) == cmdtype::status && cmd.getinstance( ).has_value( ) )
+			path = R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/responses/singlestatus.txt)";
+		else if( cmd.gettype( ) == cmdtype::status )
+			path = R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/responses/status.txt)";
+		
+		
+		if( FILE* file{ fopen( path.c_str( ), "r" ) }; file )
+		{
+			while( fgets( buffer, sizeof( buffer ), file ) != nullptr )
+			{
+				oss << buffer;
+				bzero( buffer, sizeof( buffer ) );
+			}
+			fclose( file );
+		}
+		*/
 		while( fgets( buffer, sizeof( buffer ), pfile.get( ) ) != nullptr )
 		{
 			oss << buffer;
@@ -229,7 +243,7 @@ namespace gymon
 
 		// Wrap the parsing logic so that it can
 		// be reused.
-		using pfunc = std::optional<std::vector<std::string>>( * )( std::string_view sv );
+		using pfunc = std::optional<std::vector<std::string>>( * )( std::string const& str );
 		auto const parse = [ & ]( pfunc func, std::string const& str ) 
 			-> std::optional<std::string>
 		{
@@ -258,14 +272,14 @@ namespace gymon
 				// If we reach here it means we were unable
 				// to parse the shell reply.
 				trim_from( out, '\n' );
-				return out;
+				return fmt::format( "ERROR: Failed to parse '{0}'\n", out );
 			}
 			else if( cmd.gettype( ) == cmdtype::status &&
 					 cmd.getinstance( ).has_value( ) )
 			{
 				trim_from( out, '\n' );
 				auto resp{ resparse::parsess( out, cmd.getinstance( ).value( ) ) };				
-				return resp.has_value( ) ? resp : out;
+				return resp.has_value( ) ? resp : fmt::format( "ERROR: Failed to parse '{0}'\n", out );;
 			}
 			else
 			{
@@ -274,7 +288,7 @@ namespace gymon
 				// If we reach here it means we were unable
 				// to parse the shell reply.
 				trim_from( out, '\n' );
-				return out;
+				return fmt::format( "ERROR: Failed to parse '{0}'\n", out );;
 			}
 		}		
 		return std::nullopt;
@@ -313,7 +327,7 @@ namespace gymon
 		// Format the outgoing message with the correct
 		// delimiters and a CRLF.
 		std::time_t timer{ std::time( nullptr ) };
-		std::string const fmsg{ fmt::format( "{}{:%Y%m%d%H%M%S}\n{}\n{}\r\n", 
+		std::string const fmsg{ fmt::format( "{}{:%Y%m%d%H%M%S}\n{}{}\r\n", 
 			delimiter, *std::localtime( &timer ), msg, delimiter ) };
 
 		ssize_t bytessent{ 0 };
@@ -363,7 +377,7 @@ namespace gymon
 				// An instace was also sent.
 				if( match[ 2 ].matched )
 					( void )cmd.setinstance( match[ 2 ].str( ) );
-
+				
 				return cmd;
 			}
 		}			

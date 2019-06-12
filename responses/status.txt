@@ -1,0 +1,4 @@
+Gymea instance 0 is Stopped, -3, failed USB comms
+Gymea instance 1 is Stopped, -3, failed USB comms
+Gymea instance 2 is Stopped, -3, failed USB comms
+Gymea instance 3 is Stopped, -3, failed USB comms

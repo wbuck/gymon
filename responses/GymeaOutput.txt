@@ -1,0 +1,5 @@
+Stopping Gymea instance 0:            [FAILED]
+Stopping Gymea instance 1:                                 [FAILED]
+Stopping Gymea instance 2:                                 [FAILED]
+Stopping Gymea instance 3:                                 [FAILED]
+
