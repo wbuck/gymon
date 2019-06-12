@@ -1,5 +1,8 @@
-#VScode
+# VScode
 .vscode
+
+# Precomiled headers
+ipch
 
 # Prerequisites
 *.d

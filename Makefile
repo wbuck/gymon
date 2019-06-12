@@ -14,7 +14,7 @@ LDFLAGS = -g
 # Set application name.
 NAME = gymon.out
 
-all: main.o resparse.o
+build: main.o resparse.o
 	$(CXX) $(LDFLAGS) $(OPT) main.o resparse.o $(FMT_LIB) -o $(NAME)
 
 main.o: main.cpp
@@ -25,3 +25,10 @@ resparse.o: resparse.cpp
 
 clean:
 	rm -rf *.o $(NAME)
+
+rebuild: clean build
+
+directory: bin
+
+bin:
+	mkdir bin
