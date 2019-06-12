@@ -1,9 +1,3 @@
-# VScode
-.vscode
-
-# Precomiled headers
-ipch
-
 # Prerequisites
 *.d
 
@@ -16,6 +10,7 @@ ipch
 # Precompiled Headers
 *.gch
 *.pch
+.vscode/ipch
 
 # Compiled Dynamic libraries
 *.so
