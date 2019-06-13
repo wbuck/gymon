@@ -31,3 +31,7 @@
 *.exe
 *.out
 *.app
+
+# Logging
+*.txt
+*.log
