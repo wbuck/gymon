@@ -1,3 +1,4 @@
+#include "server.h"
 #include "connection.h"
 #include <iostream>
 #include <cstdio>
@@ -33,73 +34,6 @@
 //		_recvsig = true;
 //	}	
 //}
-
-#if false
-static void tcp_server( )
-{
-	struct addrinfo* hints;
-	int32_t reuseaddr{ 1 };
-
-	// Get the address info.
-	struct addrinfo info{ 0 };
-	info.ai_family = AF_INET;
-	info.ai_socktype = SOCK_STREAM;
-	if( getaddrinfo( nullptr, "32001", &info, &hints ) != 0 )
-	{
-		std::cerr << "Failed to get addr\n";
-		return;
-	}
-
-	// Create the socket.
-	int32_t sockfd;
-	if( sockfd = socket( hints->ai_family, hints->ai_socktype, hints->ai_protocol ); sockfd < 0 )
-	{
-		std::cerr << "Failed to create socket\n";
-		return;
-	}
-
-	// Enable the socket to reuse the address.
-	if( setsockopt( sockfd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof( int32_t ) ) < 0 )
-	{
-		std::cerr << "Failed to set socket operation\n";
-		return;
-	}
-
-	// Bind to the address.
-	if( bind( sockfd, hints->ai_addr, hints->ai_addrlen ) < 0 )
-	{
-		std::cerr << "Failed to bind address\n";
-		return;
-	}
-
-	freeaddrinfo( hints );
-
-	// Listen.
-	if( listen( sockfd, 10 ) < 0 )
-	{
-		std::cerr << "Failed to listen\n";
-		return;
-	}
-
-	std::vector<gymon::client> clients;
-	// Main loop.
-	while( true )
-	{
-		socklen_t size{ sizeof( struct sockaddr_in ) };
-		struct sockaddr_in address;
-		if( int32_t nsockfd{ accept( sockfd, ( struct sockaddr* ) &address, &size ) }; nsockfd < 0 )
-			std::cerr << "Accept error\n";
-		else
-		{
-			std::cout << "Connected on " << inet_ntoa( address.sin_addr ) << " port " << htons( address.sin_port ) << '\n';
-			clients.emplace_back( nsockfd );
-			auto& client{ clients.back( ) };
-			client.start( );
-		}
-	}
-	close( sockfd );
-}
-#endif
 
 #define PORT "32001"   // port we're listening on
 
@@ -139,7 +73,7 @@ static void tcp_server_async( )
 	while( true )
 	{
 		// Attempt to get a list of addresses that match
-		// out criteria.
+		// our criteria.
 		if( int32_t ec{ getaddrinfo( nullptr, PORT, &criteria, &addresses ) }; ec < 0 )
 		{
 			std::cerr << "Server error: " << gai_strerror( ec ) << '\n';
@@ -267,8 +201,10 @@ static void tcp_server_async( )
 
 int main( )
 {
-	tcp_server_async( );
-	std::cin.get( );
+	gymon::server server;
+	std::future<void> future{ server.listen( "32001" ) };
+	std::cout << "Server started\n";
+	future.wait( );
 	return 0;
 	//gymon::daemon::daemonize( signal_handler );
 	//// Open the log file.
