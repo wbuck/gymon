@@ -28,7 +28,6 @@ namespace gymon
 		if( !responses.empty( ) )
 			return responses;
 
-		std::cerr << "Failed to parse ms: " << bashres << '\n';
 		return std::nullopt;
 	}
 
@@ -42,7 +41,6 @@ namespace gymon
 		if( std::smatch match; std::regex_search( bashres, match, pattern ) )
 			return fmt::format( "Status Gymea instance {0}: {1}\n", instance, match[ 1 ].str( ) );
 		
-		std::cerr << "Failed to parse ss: " << bashres << '\n';
 		return std::nullopt;
 	}
 
@@ -71,7 +69,6 @@ namespace gymon
 		if( !responses.empty( ) )
 			return responses;
 
-		std::cerr << "Failed to parse cmd: " << bashres << '\n';
 		return std::nullopt;		
 	}
 }

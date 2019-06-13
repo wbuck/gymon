@@ -160,8 +160,7 @@ namespace gymon
 		// Returns the optional Gymea instance ID.		
 		std::optional<int> getinstance( ) const noexcept
 		{ return _instance; }
-
-	private:
+	
 		// Returns a string representation of the
 		// cmdtype enum.
 		constexpr char const* type_tostring( ) const noexcept
@@ -178,6 +177,8 @@ namespace gymon
 					return "status";
 			}
 		}
+
+		private:
 
 		// Returns the cmdtype enum member corresponding
 		// to the input string_view.

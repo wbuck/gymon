@@ -4,7 +4,8 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/deps/fmt/include/"
+                "${workspaceFolder}/deps/fmt/include/",
+                "${workspaceFolder}/deps/spdlog/include/"
             ],
             "defines": [
                 "_DEBUG",

@@ -22,7 +22,7 @@
 #include <sys/socket.h>
 #include <fmt/format.h>
 #include <fmt/time.h>
-
+#include <spdlog/spdlog.h>
 
 namespace gymon
 {
@@ -33,8 +33,10 @@ namespace gymon
 		static_assert( N <= 4096, "Size cannot exceed 4096" );
 
 	public:
-		explicit connection( socketfd socket ) noexcept
-			: _socket{ socket }	{ }
+		explicit connection( socketfd socket, std::string address ) noexcept
+			: _socket{ socket }, 
+			  _logger{ spdlog::get( "gymon" ) },
+			  _address{ std::move( address ) } { }
 
 		connection( connection&& ) = default;
 
@@ -64,8 +66,10 @@ namespace gymon
 
 	private:
 		socketfd _socket;
+		std::shared_ptr<spdlog::logger> _logger;
+		std::string _address;
 		std::array<char, N> _buffer;
-		ssize_t _bytesread{ 0 };
+		ssize_t _bytesread{ 0 };		
 	};
 
 	template<std::size_t N>
@@ -75,19 +79,26 @@ namespace gymon
 		{
 			case sockresult::closed:
 			{
-				std::cout << "Connection closed by remote host\n";
+				if( _logger )
+					_logger->info( "Connection {0}:{1} closed by remote host", _address, _socket );
+
 				close( _socket );
 				return false;
 			}
 			case sockresult::error:
-			{
-				perror( "Error encountered while receving" );
+			{				
+				if( _logger )
+					_logger->error( "Error encountered while receving. {0}", strerror( errno ) );
+
 				close( _socket );
 				return false;
 			}
 			case sockresult::retry:
 			{
-				perror( "Error encountered while receving. Retrying receive." );
+				if( _logger )
+					_logger->warn( "Error encountered while receving. {0}. "
+						"Retrying receive.", strerror( errno ) );
+
 				return true;
 			}
 			case sockresult::success:
@@ -98,6 +109,10 @@ namespace gymon
 					std::end( _buffer ), '#', 'e', 'n', 'd' ) }; index > -1 )
 				{
 					std::string req{ std::begin( _buffer ), std::begin( _buffer ) + index };
+
+					if( _logger )
+						_logger->debug( "{0}:{1} requested: '{2}'", _address, _socket, req );
+					
 					// We received a complete message so parse
 					// the request.
 					if( auto cmd{ getcmd( req ) }; cmd.has_value( ) )
@@ -107,7 +122,11 @@ namespace gymon
 						{
 							if( send( outp.value( ) ) == sockresult::error )
 							{
-								perror( "Failed to write to socket." );
+								if( _logger )
+								{
+									_logger->error( "Failed to write to {0}:{1}: {2}",
+										 _address, _socket, strerror( errno ) );
+								}									
 								close( _socket );
 								return false;
 							}
@@ -117,7 +136,11 @@ namespace gymon
 							if( send( fmt::format( 
 								"ERROR: Unable to execute '{0}' command\n", req ) ) == sockresult::error )
 							{
-								perror( "Failed to write to socket." );
+								if( _logger )
+								{
+									_logger->error( "Failed to write to {0}:{1}: {2}",
+										 _address, _socket, strerror( errno ) );
+								}									
 								close( _socket );
 								return false;
 							}
@@ -130,7 +153,11 @@ namespace gymon
 						if( send( fmt::format( 
 							"ERROR: The request '{0}' is invalid\n", req ) ) == sockresult::error )
 						{
-							perror( "Failed to write to socket." );
+							if( _logger )
+							{
+								_logger->error( "Failed to write to {0}:{1}: {2}",
+									_address, _socket, strerror( errno ) );
+							}
 							close( _socket );
 							return false;
 						}
@@ -140,7 +167,11 @@ namespace gymon
 				}
 				else if( _bytesread >= static_cast<ssize_t>( _buffer.size( ) - 1 ) )
 				{
-					std::cerr << "Command too large\n";
+					if( _logger )
+					{
+						_logger->error( "{0}:{1} sent too much data, closing connection.",
+							 _address, _socket );
+					}
 					close( _socket );
 					return false;
 				}
@@ -148,7 +179,11 @@ namespace gymon
 			}				
 			default:
 			{
-				std::cerr << "Invalid socket result.";
+				if( _logger )
+				{
+					_logger->error( "Unknown socket result, closing connection {0}:{1}",
+						 _address, _socket );
+				}
 				close( _socket );
 				return false;
 			}
@@ -190,7 +225,9 @@ namespace gymon
 
 		if( !pfile.get( ) )
 		{
-			perror( "Failed to open shell process." );
+			if( _logger )
+				_logger->error( "Failed to open shell process: {0}", strerror( errno ) );
+			
 			return std::nullopt;
 		}
 
@@ -229,7 +266,9 @@ namespace gymon
 
 		if( pfile && ferror( pfile.get( ) ) )
 		{
-			perror( "Failed to execute shell command" );
+			if( _logger )
+				_logger->error( "Failed to execute shell command: {0}", strerror( errno ) );
+
 			return std::nullopt;
 		}
 
@@ -271,26 +310,43 @@ namespace gymon
 
 				// If we reach here it means we were unable
 				// to parse the shell reply.
-				trim_from( out, '\n' );
+				trim_from( out, '\n' );		
+
+				if( _logger )
+					_logger->warn( "Failed to parse shell response: '{0}'", out );
+
 				return fmt::format( "ERROR: Failed to parse '{0}'\n", out );
 			}
 			else if( cmd.gettype( ) == cmdtype::status &&
 					 cmd.getinstance( ).has_value( ) )
 			{
 				trim_from( out, '\n' );
-				auto resp{ resparse::parsess( out, cmd.getinstance( ).value( ) ) };				
-				return resp.has_value( ) ? resp : fmt::format( "ERROR: Failed to parse '{0}'\n", out );;
+				if( auto resp{ resparse::parsess( out, 
+					cmd.getinstance( ).value( ) ) }; resp.has_value( ) )
+					return resp;			
+
+				if( _logger )
+					_logger->warn( "Failed to parse shell response: '{0}'", out );
+
+				return fmt::format( "ERROR: Failed to parse '{0}'\n", out );				
 			}
 			else
 			{
 				if( auto resp{ parse( resparse::parsems, out ) }; resp.has_value( ) )
 					return resp.value( );
+
 				// If we reach here it means we were unable
 				// to parse the shell reply.
 				trim_from( out, '\n' );
-				return fmt::format( "ERROR: Failed to parse '{0}'\n", out );;
+
+				if( _logger )
+					_logger->warn( "Failed to parse shell response: '{0}'", out );
+
+				return fmt::format( "ERROR: Failed to parse '{0}'\n", out );				
 			}
 		}		
+		if( _logger )
+			_logger->error( "Failed to parse shell response for unknown reason." );
 		return std::nullopt;
 	} 
 
@@ -329,7 +385,10 @@ namespace gymon
 		std::time_t timer{ std::time( nullptr ) };
 		std::string const fmsg{ fmt::format( "{}{:%Y%m%d%H%M%S}\n{}{}\r\n", 
 			delimiter, *std::localtime( &timer ), msg, delimiter ) };
-
+		
+		if( _logger )
+			_logger->debug( "Sending {0}:{1}: {2}", _address, _socket, fmsg );
+		
 		ssize_t bytessent{ 0 };
 		while( bytessent < static_cast<ssize_t>( fmsg.size( ) ) )
 		{
@@ -338,19 +397,31 @@ namespace gymon
 			{
 				if( bytessent == 0 )
 				{
-					std::cerr << "Attemping send again\n";
+					if( _logger )
+					{
+						_logger->warn( "Failed to send response to {0}:{1}. Retrying send",
+							_address, _socket );
+					}
 					continue;
 				}
 				// A temporary error was encountered to try
 				// sending the data again.
 				else if( errno == EINTR || errno == EAGAIN )
 				{
-					perror( "Error encountered while writing. Retrying send." );
+					if( _logger )
+					{
+						_logger->warn( "Failed to send response to {0}:{1}. {2}. Retrying send.",
+							_address, _socket, strerror( errno ) );
+					}
 					continue;
 				}
 				else
 				{
-					perror( "Error encountered while writing, closing socket" );
+					if( _logger )
+					{
+						_logger->warn( "Failed to send response to {0}:{1}. {2}. Closing connection.",
+							_address, _socket, strerror( errno ) );
+					}
 					return sockresult::error;
 				}
 			}
@@ -377,8 +448,13 @@ namespace gymon
 				// An instace was also sent.
 				if( match[ 2 ].matched )
 					( void )cmd.setinstance( match[ 2 ].str( ) );
-				
+								
 				return cmd;
+			}
+			if( _logger )
+			{
+				_logger->warn( "Failed to parse request '{0}' from {1}:{2}", 
+					req, _address, _socket );
 			}
 		}			
 		return std::nullopt;

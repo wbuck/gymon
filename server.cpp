@@ -90,16 +90,15 @@ namespace gymon
                         // Keep track of the highest file descriptor.
                         if( socket > fdmax )
                             fdmax = socket;
-
-                        // Add the new connection to our list of active
-                        // connections.
-                        clients.emplace_back( socket );
                         
                         // Get the remote IP address.
                         std::string address{ inet_ntop( remoteaddr.ss_family,
                             get_in_addr( reinterpret_cast<struct sockaddr*>( &remoteaddr ) ),
                             remoteip.data( ), remoteip.size( ) ) };
-                        
+
+                        // Add the new connection to our list of active
+                        // connections.
+                        clients.emplace_back( socket, address );                                                                     
                         std::cout << "New connection from " << address << " on socket " << socket << '\n';
                     }                    
                 }
@@ -126,7 +125,8 @@ namespace gymon
         } );
     }
 
-    custom_ptr<struct addrinfo, freeaddrinfo> server::getaddrs( std::string const& port ) const noexcept
+    custom_ptr<struct addrinfo, freeaddrinfo> server::getaddrs( 
+        std::string const& port ) const noexcept
     {
         // If successful this will contain a linked list
         // of possible addresses to use.
@@ -158,7 +158,8 @@ namespace gymon
         }
     }
 
-    sockresult server::bindaddr( custom_ptr<struct addrinfo, freeaddrinfo> addresses ) noexcept
+    sockresult server::bindaddr( 
+        custom_ptr<struct addrinfo, freeaddrinfo> addresses ) noexcept
     {
         struct addrinfo* address{ nullptr };
 

@@ -5,8 +5,11 @@ CXX = g++
 FMT_PATH = ./deps/fmt
 FMT_INC = -I$(FMT_PATH)/include/
 FMT_LIB = -L$(FMT_PATH)/lib -lfmt
+#Spdlog
+SPD_PATH = ./deps/Spdlog
+SPD_INC = -I$(SPD_PATH)/include/
 # Set the flags to pass to the compiler.
-CXXFLAGS = -c -Wall -g -std=c++17 $(FMT_INC) 
+CXXFLAGS = -c -Wall -g -std=c++17 $(FMT_INC) $(SPD_INC)
 # Set optimization.
 OPT = -O3
 # Set linker flags.
