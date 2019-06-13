@@ -21,12 +21,12 @@ namespace gymon
     {
     public:
 
-        std::future<void> listen( std::string_view port ) noexcept;
+        std::future<void> listen( std::string const& port ) noexcept;
     private:
 
         // Attempts to get a list of addresses that match
         // the supplied criteria.
-        custom_ptr<struct addrinfo, freeaddrinfo> getaddrs( std::string_view port ) const noexcept;
+        custom_ptr<struct addrinfo, freeaddrinfo> getaddrs( std::string const& port ) const noexcept;
         
         sockresult bindaddr( custom_ptr<struct addrinfo, freeaddrinfo> addresses ) noexcept;
     private:

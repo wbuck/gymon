@@ -10,7 +10,7 @@
 
 namespace gymon
 {    
-    std::future<void> server::listen( std::string_view port ) noexcept
+    std::future<void> server::listen( std::string const& port ) noexcept
     {
         return std::async( std::launch::async, [ & ] 
         {
@@ -126,11 +126,11 @@ namespace gymon
         } );
     }
 
-    custom_ptr<struct addrinfo, freeaddrinfo> server::getaddrs( std::string_view port ) const noexcept
+    custom_ptr<struct addrinfo, freeaddrinfo> server::getaddrs( std::string const& port ) const noexcept
     {
         // If successful this will contain a linked list
         // of possible addresses to use.
-        struct addrinfo* addresses;
+        struct addrinfo* addresses{ nullptr };
 
         // Set up the non blocking socket 
 	    // address criteria.
@@ -141,7 +141,7 @@ namespace gymon
 
         while( true )
         {
-            if( int32_t ec{ getaddrinfo( nullptr, "32001", 
+            if( int32_t ec{ getaddrinfo( nullptr, port.c_str( ), 
                 &criteria, &addresses ) }; ec < 0 )
 		    {
 			    std::cerr << "Server error: " << gai_strerror( ec ) << '\n';
