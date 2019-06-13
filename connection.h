@@ -20,9 +20,10 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <spdlog/spdlog.h>
 #include <fmt/format.h>
 #include <fmt/time.h>
-#include <spdlog/spdlog.h>
+
 
 namespace gymon
 {

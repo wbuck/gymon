@@ -6,6 +6,7 @@
 #include <vector>
 #include <array>
 #include <arpa/inet.h>
+#include <sys/select.h>
 
 
 namespace gymon

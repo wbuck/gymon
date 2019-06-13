@@ -1,21 +1,21 @@
 # Set the compiler to use.
-CXX = g++
+CXX=g++
 # Dependencies.
 # Fmt
-FMT_PATH = ./deps/fmt
-FMT_INC = -I$(FMT_PATH)/include/
-FMT_LIB = -L$(FMT_PATH)/lib -lfmt
-#Spdlog
-SPD_PATH = ./deps/Spdlog
-SPD_INC = -I$(SPD_PATH)/include/
+FMT_PATH=./deps/fmt
+FMT_INC=-I$(FMT_PATH)/include/
+FMT_LIB=-L$(FMT_PATH)/lib -lfmt
+# Spdlog
+SPD_PATH=./deps/spdlog
+SPD_INC=-I$(SPD_PATH)/include/
 # Set the flags to pass to the compiler.
-CXXFLAGS = -c -Wall -g -std=c++17 $(FMT_INC) $(SPD_INC)
+CXXFLAGS=-c -Wall -g -std=c++17 $(SPD_INC) $(FMT_INC)
 # Set optimization.
-OPT = -O3
+OPT=-O3
 # Set linker flags.
-LDFLAGS = -g -pthread -static-libgcc -static-libstdc++
+LDFLAGS=-g -pthread -static-libgcc -static-libstdc++
 # Set application name.
-NAME = gymon.out
+NAME=gymon.out
 
 build: main.o server.o resparse.o
 	$(CXX) $(LDFLAGS) $(OPT) main.o server.o resparse.o $(FMT_LIB) -o $(NAME)
@@ -33,8 +33,3 @@ clean:
 	rm -rf *.o $(NAME)
 
 rebuild: clean build
-
-directory: bin
-
-bin:
-	mkdir bin

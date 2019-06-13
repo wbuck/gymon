@@ -56,6 +56,7 @@ int main( )
 	_logger->info( "Server listening on port {0}", _port );
 
 	future.wait( );
+	_logger->info( "Server shutting down" );
 	spdlog::drop( "gymon" );
 	return 0;
 	//gymon::daemon::daemonize( signal_handler );
