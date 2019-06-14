@@ -5,12 +5,7 @@
 #include <future>
 #include <vector>
 #include <chrono>
-#include <memory>
-#include <signal.h>
 #include <cstdio>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <syslog.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
@@ -21,20 +16,6 @@
 
 static std::shared_ptr<spdlog::logger> _logger;
 static const std::string _port{ "32001" };
-static constexpr char const* _name{ "gymon" };
-static bool _recvsig{ false };
-static std::mutex _mutex;
-
-static void signal_handler( int32_t signum, siginfo_t* info, void* ptr )
-{
-	if( signum == SIGTERM )
-	{
-		std::scoped_lock<std::mutex> lock{ _mutex };
-		if( _logger )
-			_logger->debug( "Received SIGTERM {0}, shutting down", signum ); 
-		_recvsig = true; 
-	}	
-}
 
 static std::shared_ptr<spdlog::logger> create_logger( )
 {
@@ -69,14 +50,9 @@ static void servrun( int32_t sigfd )
 	_logger->info( "Server shutting down" );
 }
 
-static void servstop( )
-{
-	
-}
-
 int main( )
 {		
-	int32_t sigfd{ gymon::daemon::daemonize( signal_handler ) };
+	int32_t sigfd{ gymon::daemon::daemonize( SIGTERM ) };
 	// Open the log file.
 	_logger = create_logger( );
 	// Daemon-specific initialization goes here.

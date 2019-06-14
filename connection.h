@@ -198,7 +198,7 @@ namespace gymon
 	inline sockresult connection<N>::receive( ) noexcept
 	{
 		// Read the incoming TCP stream from the client.
-		_bytesread += ::recv( _socket, _buffer.data( ) + _bytesread, _buffer.size( ) - 1, 0 );
+		_bytesread += recv( _socket, _buffer.data( ) + _bytesread, _buffer.size( ) - 1, 0 );
 
 		// Socket was closed by the remote client.
 		if( _bytesread == 0 )		

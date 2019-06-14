@@ -17,14 +17,11 @@ LDFLAGS=-g -pthread -static-libgcc -static-libstdc++
 # Set application name.
 NAME=gymon.out
 
-build: main.o daemon.o server.o resparse.o
-	$(CXX) $(LDFLAGS) $(OPT) main.o daemon.o server.o resparse.o $(FMT_LIB) -o $(NAME)
+build: main.o server.o resparse.o
+	$(CXX) $(LDFLAGS) $(OPT) main.o server.o resparse.o $(FMT_LIB) -o $(NAME)
 
 main.o: main.cpp
 	$(CXX) $(CXXFLAGS) $(OPT) -c main.cpp
-
-daemon.o: daemon.cpp
-	$(CXX) $(CXXFLAGS) $(OPT) -c daemon.cpp
 
 server.o: server.cpp
 	$(CXX) $(CXXFLAGS) $(OPT) -c server.cpp
