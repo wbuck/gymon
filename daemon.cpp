@@ -1,3 +1,4 @@
+#include "daemon.h"
 #include <cstdio>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -8,11 +9,12 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <iostream>
-#include "daemon.h"
+#include <sys/signalfd.h>
+
 
 namespace gymon
 {
-	void daemon::daemonize( SignalHandler pfnc ) noexcept
+	int daemon::daemonize( SignalHandler pfnc ) noexcept
 	{
 		std::cout << "Forking off the parent process\n";
 		pid_t pid, sid;
@@ -43,9 +45,28 @@ namespace gymon
 		// Catch, ignore and handle signals.
 		//signal( SIGCHLD, SIG_IGN );
 		//signal( SIGHUP, SIG_IGN );
-		if( setsigact( pfnc ) < 0 )
+		//if( setsigact( pfnc ) < 0 )
+		//{
+		//	std::cerr << "Failed to set signal action\n";
+		//	exit( EXIT_FAILURE );
+		//}
+		sigset_t mask;
+		sigemptyset( &mask );
+		sigaddset( &mask, SIGTERM );
+
+		int32_t sigfd{ signalfd( -1, &mask, 0 ) };
+		if( sigfd < 0 )
 		{
-			std::cerr << "Failed to set signal action\n";
+			perror( "signalfd" );
+			exit( EXIT_FAILURE );
+		}
+
+		// Block the signals that we handle using signalfd
+		// so that they don't cause signal handlers or default
+		// signal actions to execute.
+		if( sigprocmask( SIG_BLOCK, &mask, nullptr ) < 0 )
+		{
+			perror( "sigprocmask" );
 			exit( EXIT_FAILURE );
 		}
 
@@ -66,9 +87,12 @@ namespace gymon
 			exit( EXIT_FAILURE );
 		}
 
-		// Close all open file descriptors.
-		for( int32_t id{ static_cast< int32_t >( sysconf( _SC_OPEN_MAX ) ) }; id >= 0; id-- )
-			close( id );
+		// Close standard file descriptors.
+		close( STDIN_FILENO	);
+ 		close( STDOUT_FILENO );
+ 		close( STDERR_FILENO );
+
+		return sigfd;
 	}
 
 	int daemon::setsigact( SignalHandler pfnc ) noexcept

@@ -8,7 +8,7 @@ namespace gymon
 	class daemon
 	{
 	public:
-		static void daemonize( SignalHandler pfnc ) noexcept;
+		static int daemonize( SignalHandler pfnc ) noexcept;
 	private:
 		static int setsigact( SignalHandler pfnc ) noexcept;
 	};

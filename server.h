@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <future>
 #include <string_view>
+#include <spdlog/spdlog.h>
 
 namespace gymon
 {
@@ -20,8 +21,9 @@ namespace gymon
     class server
     {
     public:
+        server( ) noexcept : _logger{ spdlog::get( "gymon" ) } { }
 
-        std::future<void> listen( std::string const& port ) noexcept;
+        std::future<void> listen( std::string port, int sigfd = -1 ) noexcept;
     private:
 
         // Attempts to get a list of addresses that match
@@ -33,6 +35,7 @@ namespace gymon
 
         // File descriptor used for listening for 
         // incoming connections.
-        int32_t _listener_fd;      
+        int32_t _listener_fd;
+        std::shared_ptr<spdlog::logger> _logger;
     };
 }

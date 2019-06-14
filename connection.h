@@ -52,6 +52,9 @@ namespace gymon
 
 		bool handlereq( ) noexcept;		
 
+		std::string const& getaddr( ) const noexcept
+		{ return _address; }
+
 	private:
 
 		sockresult receive( ) noexcept;

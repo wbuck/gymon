@@ -11,14 +11,20 @@
 
 namespace gymon
 {    
-    std::future<void> server::listen( std::string const& port ) noexcept
+    std::future<void> server::listen( std::string port, int sigfd ) noexcept
     {
-        return std::async( std::launch::async, [ & ] 
+        return std::async( std::launch::async, 
+            [ this, port = std::move( port ), sigfd = sigfd ] 
         {
             // Master and temp file descriptor lists.
             fd_set masterfds, tempfds;
             FD_ZERO( &masterfds );
-            FD_ZERO( &tempfds );            
+            FD_ZERO( &tempfds ); 
+
+            FD_SET( sigfd, &masterfds );
+
+            // Keeps track of the highest file descriptor.
+	        int32_t fdmax{ sigfd };           
 
             // Will hold the clients IP address.
             struct sockaddr_storage remoteaddr;
@@ -47,15 +53,18 @@ namespace gymon
             // Start listening on the given file descriptor.
             if( ::listen( _listener_fd, 10 ) < 0 )
             {
-                perror( "Listening for incoming connections failed." );
+                if( _logger )
+                {
+                    _logger->critical( 
+                        "Failed to listen for incoming connections: {0}", strerror( errno ) );
+                }
                 return;
             }
 
             // Add the listener to the master set.
 	        FD_SET( _listener_fd, &masterfds );
-
-            // Keep track of the highest file descriptor
-	        int32_t fdmax{ _listener_fd };
+            if( _listener_fd > fdmax )
+	            fdmax = _listener_fd;
 
             // List of open connections.
             std::vector<connection<1024>> clients;
@@ -67,21 +76,46 @@ namespace gymon
                 tempfds = masterfds;
                 if( select( fdmax + 1, &tempfds, nullptr, nullptr, nullptr ) < 0 ) 
 		        {
-		        	perror( "Select failed" );
+                    if( errno == EINTR )
+                    {
+                        if( _logger )
+                            _logger->warn( "Received SIGTERM signal: {0}", strerror( errno ) );
+                        return;
+                    }
+		        	if( _logger )
+                    {
+                        _logger->critical( 
+                            "Failed to wait asynchronously for network events: {0}", strerror( errno ) );
+                    }
 		        	return;
 		        }
+                if( FD_ISSET( sigfd, &tempfds ) )
+                {
+                    if( _logger )
+                        _logger->warn( "SIGTERM received, exiting daemon" );
+                    return;
+                }
 
                 // Check if the request is a new connection.
-                if( FD_ISSET( _listener_fd, &tempfds ) )
+                else if( FD_ISSET( _listener_fd, &tempfds ) )
                 {
                     socklen_t addrlen{ sizeof( remoteaddr ) };
                     // Accept the incoming connection.
 			        if( int32_t socket{ accept( _listener_fd, 
 				        reinterpret_cast<struct sockaddr*>( &remoteaddr ), &addrlen ) }; socket < 0 )
 			        {
-			        	perror( "Error accepting new connection" );
-			        	if( errno == EAGAIN ) continue;
-			        	else return;
+			        	if( errno == EAGAIN )
+                        {
+                            if( _logger )
+                                _logger->warn( "Failed to accept new connection: {0}", strerror( errno ) );
+                            continue;
+                        }
+			        	else
+                        {
+                            if( _logger )
+                                _logger->critical( "Failed to accept new connection: {0}", strerror( errno ) );
+                            return;
+                        }
 			        }
                     else
                     {
@@ -99,8 +133,9 @@ namespace gymon
 
                         // Add the new connection to our list of active
                         // connections.
-                        clients.emplace_back( socket, address );                                                                     
-                        std::cout << "New connection from " << address << " on socket " << socket << '\n';
+                        clients.emplace_back( socket, address );                                                                                                                     
+                        if( _logger )
+                            _logger->debug( "Accepted new connection {0}:{1}", address, socket );
                     }                    
                 }
                 // Loop through the current connections to see
@@ -111,7 +146,6 @@ namespace gymon
 		        	{
 		        		if( !it->handlereq( ) )
 		        		{
-		        			std::cout << "Removing connection " << socket << '\n';
 		        			// Close the socket and remove it from the
 		        			// master set.
 		        			close( socket );
@@ -145,12 +179,18 @@ namespace gymon
             if( int32_t ec{ getaddrinfo( nullptr, port.c_str( ), 
                 &criteria, &addresses ) }; ec < 0 )
 		    {
-			    std::cerr << "Server error: " << gai_strerror( ec ) << '\n';
 			    if( ec == EAI_AGAIN ) 
 			    {
+                    if( _logger )
+                        _logger->warn( "Failed to attain list of addresses: {0}", gai_strerror( ec ) );
+
 			    	sleep( 5 );
 			    	continue;
 			    }
+
+                if( _logger )
+                    _logger->critical( "Failed to attain list of addresses: {0}", gai_strerror( ec ) );
+
                 // We failed to attain a list of addresses
                 // so return an empty pointer.
 			    return custom_ptr<struct addrinfo, freeaddrinfo>{ };
@@ -170,7 +210,9 @@ namespace gymon
             if( _listener_fd = socket( address->ai_family, 
                 address->ai_socktype, address->ai_protocol ); _listener_fd < 0 )
             {
-                perror( "Failed to create endpoint" );
+                if( _logger )
+                    _logger->critical( "Failed to create endpoint: {0}", strerror( errno ) );
+
                 return sockresult::error;
             }
 
@@ -180,14 +222,18 @@ namespace gymon
             if( setsockopt( _listener_fd, SOL_SOCKET,
                 SO_REUSEADDR, &reuse, sizeof( int32_t ) ) < 0 )
             {
-                perror( "Failed to set socket options" );
+                if( _logger )
+                    _logger->error( "Failed to set socket options: {0}", strerror( errno ) );
+
 			    close( _listener_fd );
 			    continue;
             }
 
             if( bind( _listener_fd, address->ai_addr, address->ai_addrlen ) < 0 ) 
 		    {
-			    perror( "Failed to bind socket" );
+                if( _logger )
+                    _logger->error( "Failed to bind socket: {0}", strerror( errno ) );
+
 			    close( _listener_fd );
 			    continue;
 		    }            
@@ -197,7 +243,9 @@ namespace gymon
 	    // to bind the socket.
 	    if( address == nullptr ) 
 	    {
-		    std::cerr << "Failed to bind socket\n";
+		    if( _logger )
+                _logger->critical( "Failed to bind socket: {0}", strerror( errno ) );
+
 		    return sockresult::error;
 	    }
         return sockresult::success;
