@@ -11,20 +11,23 @@
 
 namespace gymon
 {    
-    std::future<void> server::listen( std::string port, int sigfd ) noexcept
+    std::future<void> server::listen( std::string port, std::optional<int> sigfd ) noexcept
     {
         return std::async( std::launch::async, 
-            [ this, port = std::move( port ), sigfd = sigfd ] 
+            [ this, port = std::move( port ), sigfd = std::move( sigfd ) ] 
         {
             // Master and temp file descriptor lists.
             fd_set masterfds, tempfds;
             FD_ZERO( &masterfds );
             FD_ZERO( &tempfds ); 
 
-            FD_SET( sigfd, &masterfds );
-
-            // Keeps track of the highest file descriptor.
-	        int32_t fdmax{ sigfd };           
+            int32_t fdmax{ -1 };
+            if( sigfd.has_value( ) )
+            {
+                FD_SET( sigfd.value( ), &masterfds );
+                // Keeps track of the highest file descriptor.
+	            fdmax = sigfd.value( );
+            }                       
 
             // Will hold the clients IP address.
             struct sockaddr_storage remoteaddr;
@@ -79,7 +82,7 @@ namespace gymon
                     if( errno == EINTR )
                     {
                         if( _logger )
-                            _logger->warn( "Received SIGTERM signal: {0}", strerror( errno ) );
+                            _logger->warn( "Received signal: {0}", strerror( errno ) );
                         return;
                     }
 		        	if( _logger )
@@ -89,10 +92,10 @@ namespace gymon
                     }
 		        	return;
 		        }
-                if( FD_ISSET( sigfd, &tempfds ) )
+                if( sigfd.has_value( ) && FD_ISSET( sigfd.value( ), &tempfds ) )
                 {
                     if( _logger )
-                        _logger->warn( "SIGTERM received, exiting daemon" );
+                        _logger->warn( "Signal received, exiting daemon" );
                     return;
                 }
 

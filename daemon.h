@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <type_traits>
 #include <vector>
+#include <optional>
 
 namespace gymon
 {
@@ -19,7 +20,7 @@ namespace gymon
 	{
 	public:
 		template<typename ...Signals>
-		static int daemonize( Signals&& ...signals ) noexcept
+		static std::optional<int> daemonize( Signals&& ...signals ) noexcept
 		{
 			static_assert( std::conjunction_v<std::is_same<Signals, int>...>, 
 				"Invalid signal type. Signals must be a 32 bit integer" );			
@@ -50,7 +51,7 @@ namespace gymon
 
 			// Create a signal file descriptor which becomes
 			// active when a system signal is received.
-			int32_t sigfd{ 0 };
+			int32_t sigfd{ -1 };
 			if( std::vector<int> sigs{ 
 					std::forward<Signals&&>( signals )... }; !sigs.empty( ) )
 			{
@@ -99,7 +100,7 @@ namespace gymon
  			close( STDOUT_FILENO );
  			close( STDERR_FILENO );
 
-			return sigfd;
+			return sigfd > 0 ? sigfd : std::optional<int>{ };
 		}
 	};
 }

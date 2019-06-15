@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cstdio>
 #include <syslog.h>
+#include <optional>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -41,10 +42,10 @@ static std::shared_ptr<spdlog::logger> create_logger( )
 	return logger;
 }
 
-static void servrun( int32_t sigfd )
+static void servrun( std::optional<int32_t> sigfd )
 {
 	gymon::server server;
-	std::future<void> future{ server.listen( _port, sigfd ) };	
+	std::future<void> future{ server.listen( _port, std::move( sigfd ) ) };	
 	_logger->info( "Server listening on port {0}", _port );
 	future.wait( );
 	_logger->info( "Server shutting down" );
@@ -52,12 +53,12 @@ static void servrun( int32_t sigfd )
 
 int main( )
 {		
-	int32_t sigfd{ gymon::daemon::daemonize( SIGTERM ) };
+	std::optional<int32_t> sigfd{ gymon::daemon::daemonize( SIGTERM ) };
 	// Open the log file.
 	_logger = create_logger( );
 	// Daemon-specific initialization goes here.
 	_logger->debug( "Gymon started" );
-	servrun( sigfd );
+	servrun( std::move( sigfd ) );
 	_logger->debug( "Gymon terminated" );
 	spdlog::drop( "gymon" );
 	return EXIT_SUCCESS;
