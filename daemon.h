@@ -1,4 +1,5 @@
 #pragma once
+#include "sighelper.h"
 #include <cstdio>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -8,10 +9,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <iostream>
-#include <sys/signalfd.h>
-#include <signal.h>
-#include <type_traits>
-#include <vector>
 #include <optional>
 
 namespace gymon
@@ -22,9 +19,6 @@ namespace gymon
 		template<typename ...Signals>
 		static std::optional<int> daemonize( Signals&& ...signals ) noexcept
 		{
-			static_assert( std::conjunction_v<std::is_same<Signals, int>...>, 
-				"Invalid signal type. Signals must be a 32 bit integer" );			
-
 			pid_t pid, sid;
 
 			// Fork off the parent process.
@@ -49,32 +43,7 @@ namespace gymon
 
 			// Create a signal file descriptor which becomes
 			// active when a system signal is received.
-			int32_t sigfd{ -1 };
-			if( std::vector<int> sigs{ 
-					std::forward<Signals&&>( signals )... }; !sigs.empty( ) )
-			{
-				sigset_t mask;
-				sigemptyset( &mask );
-
-				for( int32_t const& sig : sigs )
-					sigaddset( &mask, sig );
-
-				sigfd = signalfd( -1, &mask, 0 );
-				if( sigfd < 0 )
-				{
-					perror( "signalfd" );
-					exit( EXIT_FAILURE );
-				}
-
-				// Block the signals that we handle using signalfd
-				// so that they don't cause signal handlers or default
-				// signal actions to execute.
-				if( sigprocmask( SIG_BLOCK, &mask, nullptr ) < 0 )
-				{
-					perror( "sigprocmask" );
-					exit( EXIT_FAILURE );
-				}
-			}			
+			int32_t sigfd{ create_sigfd( std::forward<Signals&&>( signals )... ) };
 
 			// Fork off for a second time.
 			if( pid = fork( ); pid < 0 )

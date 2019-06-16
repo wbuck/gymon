@@ -1,5 +1,4 @@
 #include "server.h"
-#include "connection.h"
 #include <iostream>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -7,6 +6,7 @@
 #include <array>
 #include <arpa/inet.h>
 #include <sys/select.h>
+#include <sys/signalfd.h>
 
 
 namespace gymon
@@ -29,7 +29,7 @@ namespace gymon
 	            fdmax = sigfd.value( );
             }                       
 
-            // Will hold the clients IP address.
+            // Will hold the _clients IP address.
             struct sockaddr_storage remoteaddr;
             std::array<char, INET_ADDRSTRLEN> remoteip;
 
@@ -67,10 +67,7 @@ namespace gymon
             // Add the listener to the master set.
 	        FD_SET( _listener_fd, &masterfds );
             if( _listener_fd > fdmax )
-	            fdmax = _listener_fd;
-
-            // List of open connections.
-            std::vector<connection<1024>> clients;
+	            fdmax = _listener_fd;            
             
             while( true )
             {
@@ -79,12 +76,6 @@ namespace gymon
                 tempfds = masterfds;
                 if( select( fdmax + 1, &tempfds, nullptr, nullptr, nullptr ) < 0 ) 
 		        {
-                    if( errno == EINTR )
-                    {
-                        if( _logger )
-                            _logger->warn( "Received signal: {0}", strerror( errno ) );
-                        return;
-                    }
 		        	if( _logger )
                     {
                         _logger->critical( 
@@ -94,8 +85,7 @@ namespace gymon
 		        }
                 if( sigfd.has_value( ) && FD_ISSET( sigfd.value( ), &tempfds ) )
                 {
-                    if( _logger )
-                        _logger->warn( "Signal received, exiting daemon" );
+                    handlesig( sigfd.value( ) );
                     return;
                 }
 
@@ -136,14 +126,14 @@ namespace gymon
 
                         // Add the new connection to our list of active
                         // connections.
-                        clients.emplace_back( socket, address );                                                                                                                     
+                        _clients.emplace_back( socket, address );                                                                                                                     
                         if( _logger )
                             _logger->debug( "Accepted new connection {0}:{1}", address, socket );
                     }                    
                 }
                 // Loop through the current connections to see
 		        // if anyone has sent data.
-		        for( auto it{ std::begin( clients ) }; it != std::end( clients ); )
+		        for( auto it{ std::begin( _clients ) }; it != std::end( _clients ); )
 		        {
 		        	if( int32_t socket{ it->getsocket( ) }; FD_ISSET( socket, &tempfds ) )
 		        	{
@@ -153,7 +143,7 @@ namespace gymon
 		        			// master set.
 		        			close( socket );
 		        			FD_CLR( socket, &masterfds );
-		        			it = clients.erase( it );
+		        			it = _clients.erase( it );
 		        			continue;
 		        		}
 		        	}
@@ -161,6 +151,32 @@ namespace gymon
 		        }
             }
         } );
+    }
+
+    void server::handlesig( int32_t sigfd ) const noexcept
+    {
+        // Contains info about the signal we just received.        
+        struct signalfd_siginfo info;
+
+        std::optional<std::string> sigstr; 
+
+        // Read the signal information into the siginfo struct.
+		if( ssize_t ec{ read( sigfd, &info,  sizeof( info ) ) }; ec == sizeof( info ) )
+            sigstr.emplace( strsignal( info.ssi_signo ) );
+
+        if( _logger )
+        {
+            if( sigstr.has_value( ) )
+                _logger->warn( 
+                    "Received '{0}' system signal. Closing all open connections", sigstr.value( ) );
+            else
+               _logger->warn( "System signal received. Closing all open connections" );                        
+        }
+        // Close all open file descriptors.
+        for( auto const& client : _clients )
+            close( client.getsocket( ) );
+                    
+        close( _listener_fd );
     }
 
     custom_ptr<struct addrinfo, freeaddrinfo> server::getaddrs( 

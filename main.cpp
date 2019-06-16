@@ -1,6 +1,7 @@
 #include "server.h"
 #include "connection.h"
 #include "daemon.h"
+#include "sighelper.h"
 #include <iostream>
 #include <future>
 #include <vector>
@@ -67,7 +68,12 @@ int main( int argc, char** argv )
 	std::optional<int32_t> sigfd{ std::nullopt };
 	if( !run_as_console )
 		gymon::daemon::daemonize( SIGTERM ).swap( sigfd );
-
+	
+	// Create a signal file descriptor which becomes
+	// active when a system signal is received.
+	else if( int32_t fd{ gymon::create_sigfd( SIGTERM, SIGINT ) }; fd > -1 )
+		sigfd = fd;
+	
 	_logger = create_logger( run_as_console );
 	
 	if( _logger )

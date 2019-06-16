@@ -1,4 +1,5 @@
 #pragma once
+#include "connection.h"
 #include "sockresult.h"
 #include <memory>
 #include <sys/select.h>
@@ -10,6 +11,8 @@
 #include <string_view>
 #include <optional>
 #include <spdlog/spdlog.h>
+#include <optional>
+#include <vector>
 
 namespace gymon
 {
@@ -28,6 +31,10 @@ namespace gymon
              std::optional<int> sigfd = std::nullopt ) noexcept;
     private:
 
+        // Handles system signals by logging a message
+        // and closing all open connections.
+        void handlesig( int32_t sigfd ) const noexcept;
+
         // Attempts to get a list of addresses that match
         // the supplied criteria.
         custom_ptr<struct addrinfo, freeaddrinfo> getaddrs( std::string const& port ) const noexcept;
@@ -38,6 +45,8 @@ namespace gymon
         // File descriptor used for listening for 
         // incoming connections.
         int32_t _listener_fd;
+        // List of open connections.
+        std::vector<connection<1024>> _clients;
         std::shared_ptr<spdlog::logger> _logger;
     };
 }
