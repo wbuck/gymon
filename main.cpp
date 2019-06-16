@@ -13,28 +13,28 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/syslog_sink.h>
 #include <spdlog/async.h>
-
+#include <CLI/CLI.hpp>
 
 static std::shared_ptr<spdlog::logger> _logger;
-static const std::string _port{ "32001" };
 
-static std::shared_ptr<spdlog::logger> create_logger( )
+static std::shared_ptr<spdlog::logger> create_logger( bool run_as_console )
 {
 	spdlog::init_thread_pool( 8192, 1 );
-    //auto stdout_sink{ std::make_shared<spdlog::sinks::stdout_color_sink_mt>( ) };
-	//stdout_sink->set_level( spdlog::level::debug );
+	std::vector<spdlog::sink_ptr> sinks;
 
-    auto rotating_sink{ 
-		std::make_shared<spdlog::sinks::rotating_file_sink_mt>( "/home/wbuckley/gymonlog.txt", 1024 * 1024 * 10 , 3 ) };
-	rotating_sink->set_level( spdlog::level::debug );
-	
-	//auto system_sink{ std::make_shared<spdlog::sinks::syslog_sink_mt>( "gymon", LOG_PID, LOG_DAEMON ) };
-	//system_sink->set_level( spdlog::level::debug );
+	if( run_as_console )
+	{
+		sinks.emplace_back( std::make_shared<spdlog::sinks::stdout_color_sink_mt>( ) );
+		sinks.front( )->set_level( spdlog::level::debug );
+	}
+    
+	sinks.emplace_back( std::make_shared<spdlog::sinks::syslog_sink_mt>( 
+		"gymon", LOG_PID, LOG_DAEMON ) );
+	sinks.back( )->set_level( spdlog::level::debug );
 
-    std::vector<spdlog::sink_ptr> sinks { /*stdout_sink,*/ rotating_sink, /*system_sink*/ };
-    auto logger = std::make_shared<spdlog::async_logger>( 
+    auto logger{ std::make_shared<spdlog::async_logger>( 
 		"gymon", std::begin( sinks ), std::end( sinks ),
-		 spdlog::thread_pool( ), spdlog::async_overflow_policy::block );
+		 spdlog::thread_pool( ), spdlog::async_overflow_policy::block ) };
 		
 	logger->set_level( spdlog::level::debug );
     spdlog::register_logger( logger );
@@ -42,24 +42,44 @@ static std::shared_ptr<spdlog::logger> create_logger( )
 	return logger;
 }
 
-static void servrun( std::optional<int32_t> sigfd )
+static void servrun( std::string const& port, std::optional<int32_t> sigfd )
 {
 	gymon::server server;
-	std::future<void> future{ server.listen( _port, std::move( sigfd ) ) };	
-	_logger->info( "Server listening on port {0}", _port );
+	std::future<void> future{ server.listen( port, std::move( sigfd ) ) };	
+	if( _logger )
+		_logger->info( "Server listening on port {0}", port );
 	future.wait( );
-	_logger->info( "Server shutting down" );
+
+	if( _logger )
+		_logger->info( "Server shutting down" );
 }
 
-int main( )
+int main( int argc, char** argv )
 {		
-	std::optional<int32_t> sigfd{ gymon::daemon::daemonize( SIGTERM ) };
-	// Open the log file.
-	_logger = create_logger( );
-	// Daemon-specific initialization goes here.
-	_logger->debug( "Gymon started" );
-	servrun( std::move( sigfd ) );
-	_logger->debug( "Gymon terminated" );
-	spdlog::drop( "gymon" );
+	CLI::App app{ "Gymon Options" };
+	bool run_as_console{ false };
+	app.add_flag( "-c", run_as_console, "Run as console application" );
+
+	std::string port{ "32001" };
+	app.add_option( "-p, --port", port, "Listening port" );
+	CLI11_PARSE( app, argc, argv );
+
+	std::optional<int32_t> sigfd{ std::nullopt };
+	if( !run_as_console )
+		gymon::daemon::daemonize( SIGTERM ).swap( sigfd );
+
+	_logger = create_logger( run_as_console );
+	
+	if( _logger )
+		_logger->debug( "Gymon started" );
+
+	servrun( port, std::move( sigfd ) );
+
+	if( _logger )
+	{
+		_logger->debug( "Gymon terminated" );
+		spdlog::drop( "gymon" );
+	}
+
 	return EXIT_SUCCESS;
 }

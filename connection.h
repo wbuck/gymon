@@ -84,7 +84,7 @@ namespace gymon
 			case sockresult::closed:
 			{
 				if( _logger )
-					_logger->info( "Connection {0}:{1} closed by remote host", _address, _socket );
+					_logger->debug( "Connection {0}:{1} closed by remote host", _address, _socket );
 
 				close( _socket );
 				return false;

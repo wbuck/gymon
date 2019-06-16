@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/deps/fmt/include/",
-                "${workspaceFolder}/deps/spdlog/include/"
+                "${workspaceFolder}/deps/spdlog/include/",
+                "${workspaceFolder}/deps/CLI11/include/"
             ],
             "defines": [
                 "_DEBUG",

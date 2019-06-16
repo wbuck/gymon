@@ -25,7 +25,6 @@ namespace gymon
 			static_assert( std::conjunction_v<std::is_same<Signals, int>...>, 
 				"Invalid signal type. Signals must be a 32 bit integer" );			
 
-			std::cout << "Forking off the parent process\n";
 			pid_t pid, sid;
 
 			// Fork off the parent process.
@@ -38,7 +37,6 @@ namespace gymon
 			{
 				// If we got a good PID, then we can
 				// exit the parent process.
-				std::cout << "Fork success, exiting parents process\n";
 				exit( EXIT_SUCCESS );
 			}
 
