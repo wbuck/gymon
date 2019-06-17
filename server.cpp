@@ -177,6 +177,7 @@ namespace gymon
             close( client.getsocket( ) );
                     
         close( _listener_fd );
+        close( sigfd );
     }
 
     custom_ptr<struct addrinfo, freeaddrinfo> server::getaddrs( 

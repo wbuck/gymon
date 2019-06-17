@@ -31,6 +31,8 @@ static std::shared_ptr<spdlog::logger> create_logger( bool run_as_console )
     
 	sinks.emplace_back( std::make_shared<spdlog::sinks::syslog_sink_mt>( 
 		"gymon", LOG_PID, LOG_DAEMON ) );
+	// sinks.emplace_back( std::make_shared<spdlog::sinks::rotating_file_sink_mt>( 
+	//	 "/var/log/gymon.log", 1024 * 1024 * 10 , 3 ) );
 	sinks.back( )->set_level( spdlog::level::debug );
 
     auto logger{ std::make_shared<spdlog::async_logger>( 

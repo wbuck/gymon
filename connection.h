@@ -153,9 +153,10 @@ namespace gymon
 					// We were unable to parse the request so alert
 					// th client of the error.
 					else
-					{						
+					{
+						strext::erase_all( req, "\r\n" );
 						if( send( fmt::format( 
-							"ERROR: The request '{0}' is invalid\n", req ) ) == sockresult::error )
+							"ERROR: The request '{0}' is invalid\r\n", req ) ) == sockresult::error )
 						{
 							if( _logger )
 							{
@@ -238,30 +239,6 @@ namespace gymon
 		std::ostringstream oss;
 		char buffer[ 256 ]{ 0 };
 
-		/*
-		std::string path;
-		if( cmd.gettype( ) == cmdtype::start )
-			path = R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/responses/start.txt)";
-		else if( cmd.gettype( ) == cmdtype::stop )
-			path = R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/responses/stop.txt)";
-		else if( cmd.gettype( ) == cmdtype::restart )
-			path = R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/responses/restart.txt)";
-		else if( cmd.gettype( ) == cmdtype::status && cmd.getinstance( ).has_value( ) )
-			path = R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/responses/singlestatus.txt)";
-		else if( cmd.gettype( ) == cmdtype::status )
-			path = R"(/mnt/c/Users/wbuckley/OneDrive/Projects/gymon-make/responses/status.txt)";
-		
-		
-		if( FILE* file{ fopen( path.c_str( ), "r" ) }; file )
-		{
-			while( fgets( buffer, sizeof( buffer ), file ) != nullptr )
-			{
-				oss << buffer;
-				bzero( buffer, sizeof( buffer ) );
-			}
-			fclose( file );
-		}
-		*/
 		while( fgets( buffer, sizeof( buffer ), pfile.get( ) ) != nullptr )
 		{
 			oss << buffer;
@@ -319,7 +296,7 @@ namespace gymon
 				if( _logger )
 					_logger->warn( "Failed to parse shell response: '{0}'", out );
 
-				return fmt::format( "ERROR: Failed to parse '{0}'\n", out );
+				return fmt::format( "ERROR: Failed to parse '{0}'\r\n", out );
 			}
 			else if( cmd.gettype( ) == cmdtype::status &&
 					 cmd.getinstance( ).has_value( ) )
@@ -332,7 +309,7 @@ namespace gymon
 				if( _logger )
 					_logger->warn( "Failed to parse shell response: '{0}'", out );
 
-				return fmt::format( "ERROR: Failed to parse '{0}'\n", out );				
+				return fmt::format( "ERROR: Failed to parse '{0}'\r\n", out );				
 			}
 			else
 			{
@@ -346,7 +323,7 @@ namespace gymon
 				if( _logger )
 					_logger->warn( "Failed to parse shell response: '{0}'", out );
 
-				return fmt::format( "ERROR: Failed to parse '{0}'\n", out );				
+				return fmt::format( "ERROR: Failed to parse '{0}'\r\n", out );				
 			}
 		}		
 		if( _logger )
@@ -387,7 +364,7 @@ namespace gymon
 		// Format the outgoing message with the correct
 		// delimiters and a CRLF.
 		std::time_t timer{ std::time( nullptr ) };
-		std::string const fmsg{ fmt::format( "{}{:%Y%m%d%H%M%S}\n{}{}\r\n", 
+		std::string const fmsg{ fmt::format( "{}{:%Y%m%d%H%M%S}\r\n{}{}\r\n", 
 			delimiter, *std::localtime( &timer ), msg, delimiter ) };
 		
 		if( _logger )

@@ -20,7 +20,7 @@ namespace gymon
 		{
 			if( std::smatch match; std::regex_search( lines[ i ], match, pattern ) )
 			{
-				responses.emplace_back( fmt::format( "Status {0}: {1}\n",
+				responses.emplace_back( fmt::format( "Status {0}: {1}\r\n",
 					match[ 1 ].str( ),
 					match[ 2 ].str( ) ) );
 			}
@@ -39,7 +39,7 @@ namespace gymon
 			std::regex_constants::optimize };
 
 		if( std::smatch match; std::regex_search( bashres, match, pattern ) )
-			return fmt::format( "Status Gymea instance {0}: {1}\n", instance, match[ 1 ].str( ) );
+			return fmt::format( "Status Gymea instance {0}: {1}\r\n", instance, match[ 1 ].str( ) );
 		
 		return std::nullopt;
 	}
@@ -61,7 +61,7 @@ namespace gymon
 		{
 			if( std::smatch match; std::regex_search( lines[ i ], match, pattern ) )
 			{		
-				responses.emplace_back( fmt::format( "{0}: {1}\n",
+				responses.emplace_back( fmt::format( "{0}: {1}\r\n",
 					match[ 1 ].str( ),
 					match[ 2 ].str( ) ) );
 			}

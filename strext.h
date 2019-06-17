@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <regex>
+#include <algorithm>
 
 namespace gymon
 {
@@ -23,7 +24,7 @@ namespace gymon
 			return std::equal( std::rbegin( suffix ), std::rend( suffix ), std::rbegin( str ) );
 		}
 
-		static std::vector<std::string> split( std::string const& str, std::string_view pattern )
+		static std::vector<std::string> split( std::string const& str, std::string_view pattern ) noexcept
 		{
 			std::vector<std::string> tokens;
 			std::regex rgx{ pattern.data( ), 
@@ -46,21 +47,13 @@ namespace gymon
 			}
 			
 			return tokens;
-			/*
-			std::vector<std::string> tokens;
-			size_t prev = 0, pos = 0;
-			do
-			{
-				if( pos = str.find( delim, prev ); pos == std::string::npos )
-					pos = str.length( );
+		}
 
-				if( std::string token{ str.substr( prev, pos - prev ) }; !token.empty( ) )
-					tokens.push_back( std::move( token ) );
-
-				prev = pos + delim.length( );
-			} while( pos < str.length( ) && prev < str.length( ) );
-			return tokens;
-			*/
+		static void erase_all( std::string& str, std::string_view substr ) noexcept
+		{
+			std::size_t pos{ std::string::npos };
+			while ( (pos = str.find( substr ) ) != std::string::npos )
+				str.erase( pos, substr.length( ) );			
 		}
 	};
 }
