@@ -8,15 +8,24 @@
 # Description:       TCP server used for querying Gymea services
 ### END INIT INFO
 
-SCRIPT=/home/wbuckley/projects/gymon-make/gymon.out
+SCRIPT=/opt/delphax/gymon/bin/gymon.out
 RUNAS=root
-LOGFILE=/var/log/gymon.log
+LOGFILE=/var/log/gymon/gymon.log
+TRUE=0
+FALSE=1
+
+status() {
+  if pgrep -x "gymon.out" >/dev/null; then
+    return ${TRUE}
+  else
+    return ${FALSE}
+  fi
+}
 
 start() {
-  if pgrep -x "gymon.out" > /dev/null
-  then
+  if status; then
     echo 'Service already running' >&2
-    return 1
+    return ${FALSE}
   fi
   echo 'Starting service…' >&2
   local CMD="$SCRIPT &> \"$LOGFILE\""
@@ -28,13 +37,13 @@ start() {
 }
 
 stop() {
-  if pgrep -x "gymon.out" > /dev/null
-  then
+  if status; then
     echo 'Stopping gymon service...' >&2
     sudo kill -15 $(pgrep -x "gymon.out") && echo 'Service stopped' >&2
-    return 0
+    return ${TRUE}
   fi
     echo 'gymon service is not running' >&2
+    return ${FALSE}
 }
 
 case "$1" in
@@ -44,10 +53,17 @@ case "$1" in
   stop)
     stop
     ;;
+  status)
+    if status; then
+      echo "gymon service running"
+    else
+      echo "gymon service stopped"
+    fi
+    ;;
   restart)
     stop
     start
     ;;
   *)
-    echo "Usage: $0 {start|stop|restart}"
+    echo "Usage: $0 {start|stop|status|restart}"
 esac
