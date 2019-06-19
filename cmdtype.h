@@ -7,6 +7,7 @@ namespace gymon
 		start,
 		stop,
 		restart,
-		status
+		status,
+		offset
 	};
 }

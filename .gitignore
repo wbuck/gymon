@@ -35,3 +35,6 @@
 # Logging
 *.txt
 *.log
+
+# Gymea config
+gymea-config

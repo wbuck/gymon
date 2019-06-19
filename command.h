@@ -173,8 +173,12 @@ namespace gymon
 					return "stop";
 				case cmdtype::restart:
 					return "restart";
-				default:
+				case cmdtype::status:
 					return "status";
+				case cmdtype::offset:
+					return "offset";
+				default:
+					return "not supported";
 			}
 		}
 
@@ -192,7 +196,8 @@ namespace gymon
 				return cmdtype::restart;
 			if( strcasecmp( "status", value.data( ) ) == 0 )
 				return cmdtype::status;
-
+			if( strcasecmp( "offset", value.data( ) ) == 0 )
+				return cmdtype::offset;
 			return std::nullopt;
 		}
 

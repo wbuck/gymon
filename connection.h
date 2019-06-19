@@ -3,6 +3,7 @@
 #include "strext.h"
 #include "sockresult.h"
 #include "resparse.h"
+#include "xmlhelper.h"
 #include <array>
 #include <errno.h>
 #include <algorithm>
@@ -65,6 +66,8 @@ namespace gymon
 
 		std::optional<std::string> execshell( command const& cmd ) const noexcept;
 
+		std::optional<std::string> getoffset( command const& cmd ) const noexcept;
+
 		template<typename Iter, typename ...Args>
 		int32_t indexof( Iter begin, Iter end, Args&& ...args ) const noexcept;
 
@@ -120,11 +123,19 @@ namespace gymon
 					// We received a complete message so parse
 					// the request.
 					if( auto cmd{ getcmd( req ) }; cmd.has_value( ) )
-					{
+					{												
+						std::optional<std::string> resp{ std::nullopt };
+
+						// Request for the current Gymea offsets.
+						if( cmd->gettype( ) == cmdtype::offset )
+							resp = getoffset( cmd.value( ) );
 						// Attempt the execute the shell command.
-						if( auto outp{ execshell( cmd.value( ) ) }; outp.has_value( ) )
+						else
+							resp = execshell( cmd.value( ) );
+						
+						if( resp.has_value( ) )
 						{
-							if( send( outp.value( ) ) == sockresult::error )
+							if( send( resp.value( ) ) == sockresult::error )
 							{
 								if( _logger )
 								{
@@ -135,10 +146,10 @@ namespace gymon
 								return false;
 							}
 						}
-						else
-						{							
+						else 
+						{
 							if( send( fmt::format( 
-								"ERROR: Unable to execute '{0}' command\n", req ) ) == sockresult::error )
+								"ERROR: Unable to execute '{0}' command\r\n", req ) ) == sockresult::error )
 							{
 								if( _logger )
 								{
@@ -151,7 +162,7 @@ namespace gymon
 						}
 					}
 					// We were unable to parse the request so alert
-					// th client of the error.
+					// the client of the error.
 					else
 					{
 						strext::erase_all( req, "\r\n" );
@@ -311,7 +322,8 @@ namespace gymon
 
 				return fmt::format( "ERROR: Failed to parse '{0}'\r\n", out );				
 			}
-			else
+			else if( cmd.gettype( ) == cmdtype::status &&
+					 !cmd.getinstance( ).has_value( ) )
 			{
 				if( auto resp{ parse( resparse::parsems, out ) }; resp.has_value( ) )
 					return resp.value( );
@@ -330,6 +342,59 @@ namespace gymon
 			_logger->error( "Failed to parse shell response for unknown reason." );
 		return std::nullopt;
 	} 
+
+	template<std::size_t N>
+	inline std::optional<std::string> connection<N>::getoffset( command const& cmd ) const noexcept
+	{
+		// Array of paths to each Gymea instances configuration.
+		static constexpr std::array<char const*, 4> paths {
+			"/home/wbuckley/projects/gymon-make/gymea-config/currentConfigs-1.xml",
+			"/home/wbuckley/projects/gymon-make/gymea-config/currentConfigs-2.xml",
+			"/home/wbuckley/projects/gymon-make/gymea-config/currentConfigs-3.xml",
+			"/home/wbuckley/projects/gymon-make/gymea-config/currentConfigs-4.xml"
+		 };
+		// Request for a single Gymea instance offset values.
+		if( cmd.getinstance( ).has_value( ) )
+		{
+			int32_t instance{ cmd.getinstance( ).value( ) };
+
+			// Read in the selected Gymea instances configuration.
+			if( auto config{ xmlhelper::getoffsets( 
+					paths[ instance ], instance ) }; config.has_value( ) )
+				return config.value( );			
+			else
+			{
+				if( _logger )
+					_logger->warn( "Failed to reteieve Gymea configuration: '{0}'", paths[ instance ] );
+
+				return fmt::format( 
+					"ERROR: Failed to reteieve Gymea configuration: '{0}'\r\n",
+					 paths[ instance ] );
+			}
+			
+		}
+		// Request for all Gymea instances offset values.
+		else
+		{
+			std::string resp;
+			for( int32_t i{ 0 }; i < static_cast<int32_t>( paths.size( ) ); i++ )
+			{
+				if( auto config{ xmlhelper::getoffsets( 
+						paths[ i ], i ) }; config.has_value( ) )
+				{
+					resp.append( config.value( ) );					
+				}
+				else
+				{
+					resp.clear( );
+					resp = "ERROR: Failed to reteieve Gymea configuration\r\n";
+					break;
+				}	
+			}
+			return resp;
+		}
+		return std::nullopt;
+	}
 
 	template<std::size_t N>
 	template<typename Iter, typename ...Args>
