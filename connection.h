@@ -345,14 +345,14 @@ namespace gymon
 
 	template<std::size_t N>
 	inline std::optional<std::string> connection<N>::getoffset( command const& cmd ) const noexcept
-	{
+	{		
 		// Array of paths to each Gymea instances configuration.
 		static constexpr std::array<char const*, 4> paths {
-			"/home/wbuckley/projects/gymon-make/gymea-config/currentConfigs-1.xml",
-			"/home/wbuckley/projects/gymon-make/gymea-config/currentConfigs-2.xml",
-			"/home/wbuckley/projects/gymon-make/gymea-config/currentConfigs-3.xml",
-			"/home/wbuckley/projects/gymon-make/gymea-config/currentConfigs-4.xml"
-		 };
+			"/opt/memjet/gymea/data/currentConfigs.xml",
+			"/opt/memjet/gymea/data/currentConfigs-1.xml",
+			"/opt/memjet/gymea/data/currentConfigs-2.xml",
+			"/opt/memjet/gymea/data/currentConfigs-3.xml"
+		};
 		// Request for a single Gymea instance offset values.
 		if( cmd.getinstance( ).has_value( ) )
 		{
@@ -379,14 +379,10 @@ namespace gymon
 			std::string resp;
 			for( int32_t i{ 0 }; i < static_cast<int32_t>( paths.size( ) ); i++ )
 			{
-				if( auto config{ xmlhelper::getoffsets( 
-						paths[ i ], i ) }; config.has_value( ) )
-				{
-					resp.append( config.value( ) );					
-				}
+				if( auto config{ xmlhelper::getoffsets( paths[ i ], i ) }; config.has_value( ) )
+					resp.append( config.value( ) );									
 				else
 				{
-					resp.clear( );
 					resp = "ERROR: Failed to reteieve Gymea configuration\r\n";
 					break;
 				}	

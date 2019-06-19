@@ -28,12 +28,14 @@ static std::shared_ptr<spdlog::logger> create_logger( bool run_as_console )
 		sinks.emplace_back( std::make_shared<spdlog::sinks::stdout_color_sink_mt>( ) );
 		sinks.front( )->set_level( spdlog::level::debug );
 	}
-    
-	sinks.emplace_back( std::make_shared<spdlog::sinks::syslog_sink_mt>( 
-		"gymon", LOG_PID, LOG_DAEMON ) );
-	// sinks.emplace_back( std::make_shared<spdlog::sinks::rotating_file_sink_mt>( 
-	//	 "/var/log/gymon/gymon.log", 1024 * 1024 * 10 , 3 ) );
-	sinks.back( )->set_level( spdlog::level::debug );
+    else
+	{
+		//sinks.emplace_back( std::make_shared<spdlog::sinks::syslog_sink_mt>( 
+		//	"gymon", LOG_PID, LOG_DAEMON ) );
+		 sinks.emplace_back( std::make_shared<spdlog::sinks::rotating_file_sink_mt>( 
+			 "/var/log/gymon/gymon.log", 1024 * 1024 * 10 , 3 ) );
+		sinks.back( )->set_level( spdlog::level::debug );		
+	}		
 
     auto logger{ std::make_shared<spdlog::async_logger>( 
 		"gymon", std::begin( sinks ), std::end( sinks ),
@@ -59,9 +61,6 @@ static void servrun( std::string const& port, std::optional<int32_t> sigfd )
 
 int main( int argc, char** argv )
 {		
-	//test_xml( );
-	//std::cin.get( );
-	//return 0;
 	CLI::App app{ "Gymon Options" };
 	bool run_as_console{ false };
 	app.add_flag( "-c", run_as_console, "Run as console application" );
@@ -89,7 +88,8 @@ int main( int argc, char** argv )
 	if( _logger )
 	{
 		_logger->debug( "Gymon terminated" );
-		spdlog::drop( "gymon" );
+		spdlog::drop_all( );
+		spdlog::shutdown( );
 	}
 
 	return EXIT_SUCCESS;

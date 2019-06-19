@@ -2,6 +2,8 @@
 #include <pugixml/pugixml.hpp>
 #include <sstream>
 #include <fmt/format.h>
+#include <spdlog/spdlog.h>
+#include <memory>
 
 namespace gymon
 {
@@ -11,10 +13,11 @@ namespace gymon
         pugi::xml_document doc;
 	    if( auto result{ doc.load_file( path.data( ) ) }; result )
 	    {
-	    	pugi::xml_node node{ doc.child( "CurrentConfigs" ).child( "ResourceMgr" ) };
-    
+	    	pugi::xml_node node{ doc.child( "CurrentConfigs" ).child( "ResourceMgr" ) };    
 	    	std::ostringstream oss;
-	    	for( int32_t i{ 0 }; i < 11; i++ )
+            // Grab the segment offset value for each of the
+            // 11 segmentsin the printhead.
+	    	for( auto i = 0; i < 11; i++ )
 	    	{
 	    		std::string value{ node.child_value( fmt::format( "SegY{0}", i ).c_str( ) ) };
 	    		if( value.empty( ) ) value = '0';
@@ -30,6 +33,14 @@ namespace gymon
 	    		"Offset Gymea instance {0}: PageX: {1}, MediaSensorDelay: {2}, Segments: [ {3} ]\r\n", 
                 instance, px, delay, oss.str( ) );
 	    }
-	    return std::nullopt;
+        else
+        {
+            if( auto logger{ spdlog::get( "gymon" ) }; logger )
+            {
+                logger->error( "Failed to open {0} due to: {1}", 
+                    path, result.description( ) );
+            }
+	        return std::nullopt;            
+        }                
     }
 }
