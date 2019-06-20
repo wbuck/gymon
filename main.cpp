@@ -30,7 +30,6 @@ static std::shared_ptr<spdlog::logger> create_logger( bool run_as_console )
 	}
     else
 	{
-		// Just testting git. I don't think git is working.
 		//sinks.emplace_back( std::make_shared<spdlog::sinks::syslog_sink_mt>( 
 		//	"gymon", LOG_PID, LOG_DAEMON ) );
 		 sinks.emplace_back( std::make_shared<spdlog::sinks::rotating_file_sink_mt>( 
