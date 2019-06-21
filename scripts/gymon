@@ -42,8 +42,6 @@ start() {
         daemon --user="$DAEMON_USER" --pidfile="$PIDFILE" "$DAEMON $DAEMON_ARGS"
 	sleep 5
         RETVAL=$?
-        #pid=`ps -A | grep $NAME | cut -d" " -f2`
-        #pid=`echo $pid | cut -d" " -f2`
 	pid=$(pgrep -x $NAME.out) 
         if [ -n "$pid" ]; then
                 echo $pid > "$PIDFILE"

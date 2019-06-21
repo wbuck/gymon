@@ -1,0 +1,56 @@
+#!/bin/sh
+#
+# description: Installation of gymon service.
+
+LOGDIR=/var/log/gymon
+BIN=/opt/delphax/gymon/bin
+INIT=/etc/init.d
+NAME=gymon
+RUNLEVEL=5
+
+
+echo "Running installation"
+ 
+# Creates the logging directory
+if [[ ! -d "$LOGDIR" ]]; then
+    echo "Creating log directory $LOGDIR"
+	mkdir -p "$LOGDIR"
+	touch "$LOGDIR/gymon.log"
+fi
+# Create bin directory
+if [[ ! -d "$BIN" ]]; then
+    echo "Creating bin directory $BIN"
+	if ! mkdir -p "$BIN" >/dev/null 2>&1; then
+        echo "Failed to create '$BIN' directory"
+        return 1
+    fi
+fi
+# Copy gymon binary to bin folder
+echo "Copying $NAME.out to $BIN"
+if ! cp $NAME.out $BIN >/dev/null 2>&1; then
+    echo "Failed to copy $NAME.out to $BIN directory"
+    return 1
+fi
+# Copy init script to init.d directory
+if [[ ! -f "$INIT/$NAME" ]]; then
+    echo "Copying $NAME init script to $INIT"
+	if ! cp $NAME $INIT >/dev/null 2>&1; then
+        echo "Failed to copy $NAME init script to $INIT"
+        return 1
+    fi
+fi
+# Add the gymon init script to chkconfig so
+# that it starts up on system boot
+if ! chkconfig --list $NAME >/dev/null 2>&1; then
+    echo "Adding $NAME to chkconfig"
+    if ! chkconfig --add $NAME >/dev/null 2>&1; then
+        echo "Failed to add $NAME to chkconfig"
+        return 1
+    fi
+fi
+# Set the chkconfig run level
+if ! chkconfig --level $RUNLEVEL $NAME on >/dev/null 2>&1; then
+    echo "Failed to set $NAME to run level $RUNLEVEL"
+fi
+
+echo "Installation complete"
