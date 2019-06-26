@@ -46,7 +46,7 @@ namespace gymon
         // incoming connections.
         int32_t _listener_fd;
         // List of open connections.
-        std::vector<connection<1024>> _clients;
+        std::vector<connection<256>> _clients;
         std::shared_ptr<spdlog::logger> _logger;
     };
 }
