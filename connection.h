@@ -476,7 +476,7 @@ namespace gymon
 	{
 		// Parse the request and look for what
 		// command was issued.
-		static std::regex const pattern{ R"(^\s{0,5}gymea\s{0,5}(\w+)\s{0,5}([0-3])?\s{0,5}$)",
+		static std::regex const pattern{ R"(^\s{0,5}gymea\s{0,5}([A-Za-z]+)\s{0,5}([0-3])?\s{0,5}$)",
 			std::regex_constants::ECMAScript | std::regex_constants::icase };
 
 		std::smatch match;
