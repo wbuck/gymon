@@ -2,6 +2,7 @@
 #include "connection.h"
 #include "daemon.h"
 #include "sighelper.h"
+#include "xmlhelper.h"
 #include <iostream>
 #include <future>
 #include <vector>
