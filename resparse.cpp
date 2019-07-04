@@ -1,7 +1,10 @@
 #include "resparse.h"
 #include "strext.h"
+#include "xmlhelper.h"
 #include <regex>
 #include <fmt/format.h>
+#include <string.h>
+#include <optional>
 
 namespace gymon
 {
@@ -11,7 +14,7 @@ namespace gymon
 		std::vector<std::string> responses;
 		responses.reserve( lines.size( ) );
 
-		static std::regex const pattern{ R"(^(.*?)\sis\s(.*?)$)",
+		static std::regex const pattern{ R"(^(Gymea\sinstance)\s(\d)\sis\s(.*?)$)",
 			std::regex_constants::ECMAScript | 
 			std::regex_constants::icase		 |
 			std::regex_constants::optimize };
@@ -20,9 +23,28 @@ namespace gymon
 		{
 			if( std::smatch match; std::regex_search( lines[ i ], match, pattern ) )
 			{
-				responses.emplace_back( fmt::format( "Status {0}: {1}\r\n",
+				// Pull the instance out of the command line
+				// reply.
+				std::string strinstance{ match[ 2 ].str( ) };
+				char* notconv;
+				int64_t instance{ strtol( strinstance.c_str( ), &notconv, 10 ) };
+				if( *notconv ) instance = -1;
+				else 
+				{
+					if( instance < 0 || instance > 3 )
+						instance = -1;
+				}
+
+				std::optional<std::string> color{ 
+					xmlhelper::getcolor( static_cast<int32_t>( instance ) ) };
+
+				if( !color.has_value( ) ) color = "";
+
+				responses.emplace_back( fmt::format( "Status {0} {1} {2}: {3}\r\n",
+					color.value( ),
 					match[ 1 ].str( ),
-					match[ 2 ].str( ) ) );
+					strinstance,
+					match[ 3 ].str( ) ) );
 			}
 		}
 		if( !responses.empty( ) )
@@ -39,7 +61,13 @@ namespace gymon
 			std::regex_constants::optimize };
 
 		if( std::smatch match; std::regex_search( bashres, match, pattern ) )
-			return fmt::format( "Status Gymea instance {0}: {1}\r\n", instance, match[ 1 ].str( ) );
+		{
+			std::optional<std::string> color{ xmlhelper::getcolor( instance ) };
+			if( !color.has_value( ) ) color = "";
+
+			return fmt::format( "Status {0} Gymea instance {1}: {2}\r\n", 
+				color.value( ), instance, match[ 1 ].str( ) );
+		}			
 		
 		return std::nullopt;
 	}
@@ -52,7 +80,7 @@ namespace gymon
 
 		// This pattern will work for both a single instance
 		// command and a multi instance command.
-		static std::regex const pattern{ R"((.*?):.*?(FAILED|OK).*?)",
+		static std::regex const pattern{ R"((\w+)\s(\w+)\s(\w+)\s(\d):.*?(FAILED|OK).*?)",
 			std::regex_constants::ECMAScript | 
 			std::regex_constants::icase		 | 
 			std::regex_constants::optimize };
@@ -61,9 +89,30 @@ namespace gymon
 		{
 			if( std::smatch match; std::regex_search( lines[ i ], match, pattern ) )
 			{		
-				responses.emplace_back( fmt::format( "{0}: {1}\r\n",
+				// Pull the instance out of the command line
+				// reply.
+				std::string strinstance{ match[ 4 ].str( ) };
+				char* notconv;
+				int64_t instance{ strtol( strinstance.c_str( ), &notconv, 10 ) };
+				if( *notconv ) instance = -1;
+				else 
+				{
+					if( instance < 0 || instance > 3 )
+						instance = -1;
+				}
+
+				std::optional<std::string> color{ 
+					xmlhelper::getcolor( static_cast<int32_t>( instance ) ) };
+
+				if( !color.has_value( ) ) color = "";
+
+				responses.emplace_back( fmt::format( "{0} {1} {2} {3} {4}: {5}\r\n",
 					match[ 1 ].str( ),
-					match[ 2 ].str( ) ) );
+					color.value( ),
+					match[ 2 ].str( ),
+					match[ 3 ].str( ),
+					strinstance,
+					match[ 5 ].str( ) ) );
 			}
 		}
 		if( !responses.empty( ) )

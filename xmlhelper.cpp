@@ -8,17 +8,25 @@
 
 namespace gymon
 {
-    std::optional<std::string> xmlhelper::getoffsets( 
-        std::string_view path, int instance ) noexcept
+	std::array<std::string, 4> xmlhelper::_cache;
+	
+    std::optional<std::string> xmlhelper::getoffsets( int instance ) noexcept
     {
+		if( instance > static_cast<int32_t>( _paths.size( ) ) - 1 || instance < 0 )
+		{
+			if( auto logger{ spdlog::get( "gymon" ) }; logger )
+            	logger->error( "Invalid instance {0} passed to 'getoffsets'", instance );
+
+			return std::nullopt;
+		}
         pugi::xml_document doc;
-	    if( auto result{ doc.load_file( path.data( ) ) }; result )
+	    if( auto result{ doc.load_file( _paths[ instance ] ) }; result )
 	    {
 	    	pugi::xml_node node{ doc.child( "CurrentConfigs" ).child( "ResourceMgr" ) }; 
 			if( !node ) 
 			{
 				if( auto logger{ spdlog::get( "gymon" ) }; logger )
-            	    logger->error( "Failed to locate XML nodes CurrentConfigs or ResourceMgr" );
+            	    logger->error( "Failed to locate XML nodes 'CurrentConfigs' or 'ResourceMgr'" );
 
             	return std::nullopt;
 			}
@@ -39,16 +47,85 @@ namespace gymon
 
 			// Grab the color mapping for the requested
 			// gymea instance.
-			std::string color{ "" };
-			if( pugi::xml_node qanode{ 
-				doc.child( "CurrentConfigs" ).child( "QaLssConfig" ) }; !qanode )
+			std::optional<std::string> color{ getcolor( doc ) };					
+			if( !color.has_value( ) ) color = "";
+			else
+				_cache[ instance ] = color.value( );
+			
+	    	return fmt::format( 
+	    		"Offset {0} Gymea instance {1}: PageX: {2}, MediaSensorDelay: {3}, Segments: [ {4} ]\r\n", 
+                	color.value( ), instance, px, delay, oss.str( ) );
+	    }
+        else
+        {
+            if( auto logger{ spdlog::get( "gymon" ) }; logger )
+            {
+                logger->error( "Failed to open {0} due to: {1}", 
+                    _paths[ instance ], result.description( ) );
+            }
+	        return std::nullopt;            
+        }                
+    }
+
+	std::optional<std::string> xmlhelper::getcolor( int instance ) noexcept
+	{
+		if( instance > static_cast<int32_t>( _paths.size( ) ) - 1 || instance < 0 )
+		{
+			if( auto logger{ spdlog::get( "gymon" ) }; logger )
+            	logger->error( "Invalid instance {0} passed to 'getcolor'", instance );
+				
+			return std::nullopt;
+		}
+
+		// If we already have the value stored, just return
+		// it instead of opening and reading the XML config.
+		if( !_cache[ instance ].empty( ) ) 
+			return _cache[ instance ];
+
+		pugi::xml_document doc;
+	    if( auto result{ doc.load_file( _paths[ instance ] ) }; result )
+		{
+	    	std::optional<std::string> color{ getcolor( doc ) };
+			// Update the cache with the color value.
+			if( color.has_value( ) )
+				_cache[ instance ] = color.value( );
+			return color;
+		}
+		else
+		{
+			if( auto logger{ spdlog::get( "gymon" ) }; logger )
+            {
+                logger->error( "Failed to open {0} due to: {1}", 
+                    _paths[ instance ], result.description( ) );
+            }
+	        return std::nullopt; 
+		}
+	}
+
+	std::optional<std::string> xmlhelper::getcolor(
+		pugi::xml_document const& doc ) noexcept
+	{
+		// Grab the color mapping for the requested
+		// gymea instance.
+		if( pugi::xml_node node{ 
+			doc.child( "CurrentConfigs" ).child( "QaLssConfig" ) }; !node )
+		{
+			if( auto logger{ spdlog::get( "gymon" ) }; logger )
+        	    logger->error( "Failed to locate XML nodes 'CurrentConfigs' or 'QaLssConfig'" );
+
+			return std::nullopt;
+		} 
+		else
+		{
+			if( std::string color{ node.child_value( "NozzleMap" ) }; color.empty( ) )
 			{
 				if( auto logger{ spdlog::get( "gymon" ) }; logger )
-            	    logger->error( "Failed to locate XML node QaLssConfig" );
-			} 
+        	    	logger->error( "Failed to get the 'NozzleMap' XML node value" );
+
+				return std::nullopt;
+			}
 			else
 			{
-				color = qanode.child_value( "NozzleMap" );
 				// Convert the channel map to a human readable string.
 				if( strcasecmp( color.data( ), R"("CCCCC")" ) == 0 )
 					color = "Cyan";
@@ -58,20 +135,13 @@ namespace gymon
 					color = "Yellow";
 				else if( strcasecmp( color.data( ), R"("KKKKK")" ) == 0 )
 					color = "Black";
+				else
+				{
+					if( auto logger{ spdlog::get( "gymon" ) }; logger )
+        	    		logger->warn( "Unrecognized nozzle color mapping {0}", color );
+				}				
+				return color;				
 			}						
-
-	    	return fmt::format( 
-	    		"Offset Gymea instance {0}: Color: {1}, PageX: {2}, MediaSensorDelay: {3}, Segments: [ {4} ]\r\n", 
-                instance, color, px, delay, oss.str( ) );
-	    }
-        else
-        {
-            if( auto logger{ spdlog::get( "gymon" ) }; logger )
-            {
-                logger->error( "Failed to open {0} due to: {1}", 
-                    path, result.description( ) );
-            }
-	        return std::nullopt;            
-        }                
-    }
+		}
+	}
 }

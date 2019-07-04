@@ -345,41 +345,33 @@ namespace gymon
 
 	template<std::size_t N>
 	inline std::optional<std::string> connection<N>::getoffset( command const& cmd ) const noexcept
-	{		
-		// Array of paths to each Gymea instances configuration.
-		static constexpr std::array<char const*, 4> paths {
-			"/opt/memjet/gymea/data/currentConfigs.xml",
-			"/opt/memjet/gymea/data/currentConfigs-1.xml",
-			"/opt/memjet/gymea/data/currentConfigs-2.xml",
-			"/opt/memjet/gymea/data/currentConfigs-3.xml"
-		};
+	{				
 		// Request for a single Gymea instance offset values.
 		if( cmd.getinstance( ).has_value( ) )
 		{
 			int32_t instance{ cmd.getinstance( ).value( ) };
 
 			// Read in the selected Gymea instances configuration.
-			if( auto config{ xmlhelper::getoffsets( 
-					paths[ instance ], instance ) }; config.has_value( ) )
+			if( auto config{ xmlhelper::getoffsets( instance ) }; config.has_value( ) )
 				return config.value( );			
 			else
 			{
 				if( _logger )
-					_logger->warn( "Failed to reteieve Gymea configuration: '{0}'", paths[ instance ] );
+					_logger->warn( "Failed to reteieve configuration for Gymea instance '{0}'", instance );
 
 				return fmt::format( 
-					"ERROR: Failed to reteieve Gymea configuration: '{0}'\r\n",
-					 paths[ instance ] );
-			}
-			
+					"ERROR: Failed to reteieve configuration for Gymea instance '{0}'\r\n",
+					 instance );
+			}			
 		}
 		// Request for all Gymea instances offset values.
 		else
 		{
 			std::string resp;
-			for( int32_t i{ 0 }; i < static_cast<int32_t>( paths.size( ) ); i++ )
+			static constexpr int32_t gymea_count{ 4 };
+			for( int32_t i{ 0 }; i < gymea_count; i++ )
 			{
-				if( auto config{ xmlhelper::getoffsets( paths[ i ], i ) }; config.has_value( ) )
+				if( auto config{ xmlhelper::getoffsets( i ) }; config.has_value( ) )
 					resp.append( config.value( ) );									
 				else
 				{
